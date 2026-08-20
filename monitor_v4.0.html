@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#080b12">
+<title>MT5 Monitor v3</title>
+<style>
+:root{
+  --bg:#080b12;--c1:#0f1420;--c2:#151c2c;--c3:#1c2538;
+  --bdr:#232d42;--txt:#dde4f0;--dim:#566380;--dim2:#3a4560;
+  --gold:#f0a500;--gold2:#ffd166;
+  --green:#00c896;--green2:#00ff9d;
+  --red:#ff4757;--red2:#ff8a94;
+  --blue:#3d85ff;--orange:#ff9500;
+  --r:12px;--r2:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);color:var(--txt);min-height:100vh}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:13px;padding-bottom:24px}
+/* ── HEADER (v4.0 กะทัดรัด + สรุปย่อติดจอ) ── */
+.hdr{position:sticky;top:0;z-index:100;background:rgba(8,11,18,.94);
+  backdrop-filter:blur(12px);border-bottom:1px solid var(--bdr);
+  padding:7px 12px;display:flex;align-items:center;gap:8px}
+.hdr-logo{width:26px;height:26px;border-radius:7px;flex-shrink:0;
+  background:linear-gradient(135deg,#1a5aff,#00c896);
+  display:flex;align-items:center;justify-content:center;font-size:14px}
+.hdr-title{font-size:13px;font-weight:800;line-height:1.15}
+.hdr-title small{color:var(--gold);font-weight:600;font-size:10px}
+.hdr-sub{font-size:8.5px;color:var(--dim)}
+.hdr-conn{margin-left:auto;display:flex;align-items:center;gap:5px;
+  background:var(--c1);border:1px solid var(--bdr);border-radius:20px;
+  padding:3px 8px;font-size:9.5px;white-space:nowrap}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--dim);flex-shrink:0}
+.dot.on{background:var(--green);box-shadow:0 0 7px var(--green)}
+.dot.off{background:var(--red);box-shadow:0 0 7px var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.dot.on{animation:pulse 2s ease-in-out infinite}
+/* สรุปย่อติดใต้หัวจอ — เห็นตลอดแม้เลื่อนลง */
+.ministrip{position:sticky;top:41px;z-index:99;background:rgba(8,11,18,.94);
+  backdrop-filter:blur(12px);border-bottom:1px solid var(--bdr);
+  padding:5px 12px;display:flex;align-items:center;gap:10px;
+  font-size:10px;overflow-x:auto;scrollbar-width:none;white-space:nowrap}
+.ministrip::-webkit-scrollbar{display:none}
+.ms-item{display:flex;align-items:baseline;gap:4px;flex-shrink:0}
+.ms-item .mk{color:var(--dim);font-size:8.5px}
+.ms-item .mv{font-weight:800;font-size:11px}
+/* ── META ── */
+.meta{padding:4px 12px;font-size:9.5px;color:var(--dim)}
+/* ── GOLD PRICE BAR (v4.0 กะทัดรัด) ── */
+.gold-bar{margin:6px 14px 8px;background:linear-gradient(135deg,#1a1505,#0f1420);
+  border:1px solid #4a3a10;border-radius:10px;padding:8px 11px;
+  display:flex;align-items:center;gap:10px;flex-wrap:nowrap}
+.gold-ic{width:30px;height:30px;border-radius:8px;flex-shrink:0;
+  background:linear-gradient(135deg,var(--gold),var(--gold2));
+  display:flex;align-items:center;justify-content:center;font-size:16px}
+.gold-main{display:flex;flex-direction:column;min-width:0}
+.gold-k{font-size:8px;color:var(--gold2);text-transform:uppercase;letter-spacing:.4px}
+.gold-v{font-size:20px;font-weight:800;color:var(--gold2);line-height:1.1}
+.gold-chg{font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gold-meta{margin-left:auto;text-align:right;font-size:8.5px;color:var(--dim);
+  line-height:1.5;flex-shrink:0}
+/* ── SESSION BAR (v4.0 กะทัดรัด) ── */
+.sess-bar{margin:0 14px 8px;background:var(--c1);border:1px solid var(--bdr);border-radius:9px;
+  padding:6px 10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:10px}
+.sess-now{display:flex;align-items:center;gap:6px;font-weight:700;font-size:11px}
+.sess-dot{width:7px;height:7px;border-radius:50%;background:var(--dim);flex-shrink:0}
+.sess-dot.hot{background:var(--gold);box-shadow:0 0 7px var(--gold)}
+.sess-dot.open{background:var(--green);box-shadow:0 0 7px var(--green)}
+.sess-dot.quiet{background:var(--dim)}
+.sess-next{margin-left:auto;color:var(--dim);text-align:right;font-size:9px;line-height:1.4}
+.spread-chip{font-size:10px;font-weight:700;padding:4px 9px;border-radius:6px;
+  background:var(--c2);border:1px solid var(--bdr)}
+.spread-chip.ok{color:var(--green)}
+.spread-chip.warn{color:var(--orange);border-color:rgba(255,149,0,.4)}
+.spread-chip.bad{color:var(--red);border-color:rgba(255,71,87,.5);background:rgba(255,71,87,.08)}
+/* ── GAUGES (แรงซื้อ/ขาย หลายช่วง) ── */
+.gauges{margin:0 14px 12px}
+.gauges-hdr{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+.gauges-hdr .caret{margin-left:auto;transition:transform .2s;font-size:13px}
+.collapsed .caret{transform:rotate(-90deg)}
+.collapse-body{overflow:hidden;transition:max-height .25s ease,opacity .2s;max-height:1000px;opacity:1}
+.collapsed .collapse-body{max-height:0;opacity:0;margin:0}
+.gauge-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+@media(max-width:520px){.gauge-grid{grid-template-columns:repeat(2,1fr)}}
+.gauge{background:var(--c1);border:1px solid var(--bdr);border-radius:12px;padding:12px 8px;text-align:center}
+.gauge .tf{font-size:11px;color:var(--dim);font-weight:700;margin-bottom:8px}
+.gauge-dial{position:relative;width:100%;max-width:120px;margin:0 auto 6px;aspect-ratio:120/74}
+.gauge-dial svg{width:100%;height:100%;display:block}
+.gauge .lbl{font-size:12px;font-weight:800;line-height:1.2;min-height:30px;display:flex;align-items:center;justify-content:center}
+.gauge .cnt{font-size:9px;color:var(--dim);margin-top:4px}
+.g-strongbuy{color:#00ff9d}.g-buy{color:var(--green)}.g-neutral{color:var(--dim)}
+.g-sell{color:var(--red)}.g-strongsell{color:#ff2d3d}
+/* ── NEWS (ข่าวกล่องแดง) ── */
+.news{margin:0 14px 14px;background:var(--c1);border:1px solid var(--bdr);border-radius:var(--r);padding:13px}
+.news-hdr{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+.news-hdr .caret{margin-left:auto;transition:transform .2s;font-size:13px}
+.news-hdr .redbox{width:11px;height:11px;border-radius:3px;background:var(--red);display:inline-block}
+.news-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.news-row:last-child{border-bottom:none}
+.news-time{font-size:12px;font-weight:800;text-align:center;min-width:52px;line-height:1.2}
+.news-time small{display:block;font-size:9px;color:var(--dim);font-weight:400}
+.news-ccy{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(255,71,87,.15);color:var(--red)}
+.news-name{flex:1;font-size:12px;line-height:1.3}
+.news-ff{font-size:9px;color:var(--dim);margin-top:2px}
+.news-soon{color:var(--gold)!important}
+.news-empty{color:var(--dim);font-size:12px;text-align:center;padding:16px}
+/* ── ALERT ── */
+.alert{display:none;margin:0 14px 10px;padding:10px 12px;border-radius:var(--r2);
+  background:rgba(255,71,87,.1);border:1px solid rgba(255,71,87,.4);
+  color:#ffb3b8;font-size:12px;gap:8px;align-items:flex-start}
+.alert.show{display:flex}
+.alert b{color:var(--red2);flex-shrink:0}
+/* ── KPIs (v4.0 — ตารางกะทัดรัด เห็นครบไม่ต้องเลื่อน) ── */
+.kpis{padding:0 14px;margin-bottom:12px;
+  display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+@media(min-width:600px){.kpis{grid-template-columns:repeat(4,1fr)}}
+@media(min-width:900px){.kpis{grid-template-columns:repeat(7,1fr)}}
+.kpi{background:var(--c1);border:1px solid var(--bdr);border-radius:9px;
+  padding:7px 8px;min-width:0;overflow:hidden}
+.kpi .k{font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.3px;
+  margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi .v{font-size:14px;font-weight:800;line-height:1.15;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi .s{font-size:8.5px;color:var(--dim);margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* ── CHART ── */
+.chart-box{margin:0 14px 14px;background:var(--c1);border:1px solid var(--bdr);border-radius:var(--r);padding:12px}
+.chart-top{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+.chart-lbl{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px}
+.tf-tabs{display:flex;gap:4px;margin-left:auto}
+.tf-btn{background:transparent;border:1px solid var(--bdr);color:var(--dim);
+  padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600}
+.tf-btn.on{background:var(--gold);color:#000;border-color:var(--gold)}
+.chart-delta{font-size:11px;color:var(--dim);margin-bottom:8px}
+svg.spark{width:100%;height:120px;display:block;overflow:visible}
+/* ── LIST HEADER ── */
+.list-hdr{padding:0 14px;margin-bottom:8px;display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+.list-hdr .lbl{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px}
+.sort-btns{display:flex;gap:4px;flex-wrap:wrap;margin-left:auto}
+.sort-btn{background:var(--c1);border:1px solid var(--bdr);color:var(--dim);
+  padding:4px 9px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600}
+.sort-btn.on{background:var(--gold);color:#000;border-color:var(--gold)}
+/* ── v4.0: ค้นหา + โหมดย่อ ── */
+.acc-search{background:var(--c1);border:1px solid var(--bdr);color:var(--txt);
+  border-radius:6px;padding:4px 8px;font-size:11px;font-family:inherit;
+  width:110px;outline:none}
+.acc-search:focus{border-color:var(--gold)}
+.acc-search::placeholder{color:var(--dim2)}
+.mode-btn{background:var(--c1);border:1px solid var(--bdr);color:var(--dim);
+  padding:4px 9px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;font-family:inherit}
+.mode-btn.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+/* โหมดย่อ: การ์ดกลายเป็นแถวเดียว เห็นหลายบัญชีพร้อมกัน */
+.grid.compact{grid-template-columns:1fr;gap:5px}
+.grid.compact .card{border-radius:8px}
+.grid.compact .c-body{padding:7px 8px 7px 11px;display:flex;align-items:center;gap:8px}
+.grid.compact .c-top{margin-bottom:0;flex:1;min-width:0;display:block}
+.grid.compact .c-login{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.grid.compact .c-server,
+.grid.compact .c-bal,
+.grid.compact .c-bar,
+.grid.compact .c-diff,
+.grid.compact .c-rows,
+.grid.compact .c-lots,
+.grid.compact .excl-tag,
+.grid.compact .c-ping{display:none}
+.grid.compact .c-equity{font-size:14px;margin:0;white-space:nowrap}
+.grid.compact .c-badge{font-size:8px;padding:1px 5px}
+.grid.compact .cmp-pl{font-size:13px;font-weight:800;white-space:nowrap;text-align:right;min-width:64px}
+.grid.compact .cmp-meta{font-size:8.5px;color:var(--dim);white-space:nowrap}
+.cmp-only{display:none}
+.grid.compact .cmp-only{display:block}
+/* ── GRID ── */
+.grid{padding:0 14px;display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media(min-width:700px){.grid{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:1000px){.grid{grid-template-columns:repeat(4,1fr)}}
+/* ── CARD ── */
+.card{background:var(--c1);border:1px solid var(--bdr);border-radius:var(--r);
+  overflow:hidden;position:relative;cursor:pointer;transition:border-color .2s}
+.card.risk{border-color:rgba(255,71,87,.5)}
+.card.stale{opacity:.55}
+.card.excluded{opacity:.5}
+.card.excluded .c-strip{background:var(--dim2)}
+.excl-tag{font-size:9px;color:var(--dim);background:var(--c2);border-radius:6px;padding:3px 8px;
+  display:inline-block;margin-bottom:6px}
+.card:active{border-color:var(--gold)}
+.c-strip{position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--green)}
+.card.neg .c-strip{background:var(--red)}
+.card.stale .c-strip{background:var(--dim2)}
+.c-body{padding:10px 10px 10px 13px}
+/* mini toggle switch (รวม/ไม่รวมยอด) */
+.mini-switch{width:34px;height:19px;border-radius:11px;background:var(--c2);border:1px solid var(--bdr);
+  position:relative;cursor:pointer;flex-shrink:0;transition:background .2s}
+.mini-switch.on{background:var(--green)}
+.mini-switch .mk{position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;
+  background:#fff;transition:left .2s}
+.mini-switch.on .mk{left:19px}
+/* top row */
+.c-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.c-login{font-size:14px;font-weight:700;line-height:1}
+.c-server{font-size:9px;color:var(--dim);margin-top:2px;line-height:1.3}
+.c-badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;text-align:center}
+.badge-live{background:rgba(0,200,150,.15);color:var(--green)}
+.badge-lag{background:rgba(255,149,0,.15);color:var(--orange)}
+.badge-off{background:rgba(255,71,87,.15);color:var(--red)}
+.c-ping{font-size:9px;color:var(--dim);text-align:right;margin-top:2px}
+/* equity */
+.c-equity{font-size:22px;font-weight:800;line-height:1;margin:6px 0 1px}
+.c-bal{font-size:10px;color:var(--dim);margin-bottom:6px}
+/* bar */
+.c-bar{height:4px;background:var(--c3);border-radius:2px;overflow:hidden;margin-bottom:4px}
+.c-bar-fill{height:100%;border-radius:2px;transition:width .5s}
+/* diff */
+.c-diff{display:flex;justify-content:space-between;font-size:10px;
+  background:var(--c2);border-radius:6px;padding:5px 7px;margin-bottom:8px}
+.c-diff .dk{color:var(--dim)}
+/* rows */
+.c-rows{display:grid;grid-template-columns:1fr 1fr;gap:5px 4px;margin-bottom:8px}
+.c-cell .ck{font-size:9px;color:var(--dim);margin-bottom:1px}
+.c-cell .cv{font-size:12px;font-weight:600}
+/* lots pills */
+.c-lots{display:flex;gap:5px;margin-bottom:2px}
+.c-lot{flex:1;text-align:center;padding:5px 4px;border-radius:6px;font-size:10px;
+  font-weight:700;background:var(--c2);border:1px solid var(--bdr)}
+.c-lot.buy{color:var(--green)}
+.c-lot.sell{color:var(--red)}
+/* positions */
+.c-pos{display:none;border-top:1px solid var(--bdr);padding:8px 13px}
+.c-pos.open{display:block}
+.pos-row{display:flex;align-items:center;gap:6px;font-size:10px;padding:4px 0;
+  border-bottom:1px solid rgba(255,255,255,.04)}
+.pos-row:last-child{border-bottom:none}
+/* ── POSITION ROWS v3.9 (มีราคาเข้า/ปัจจุบัน/ระยะจุด) ── */
+.pos-avg{font-size:10px;font-weight:700;padding:6px 8px;margin-bottom:6px;
+  background:var(--c2);border-radius:6px;text-align:center}
+.pos-row2{padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.pos-row2:last-child{border-bottom:none}
+.pr-top{display:flex;align-items:center;gap:6px;font-size:11px}
+.pr-side{font-weight:800;width:48px;flex-shrink:0}
+.pr-sym{flex:1;color:var(--txt)}
+.pr-pl{font-weight:800}
+.pr-bot{font-size:9.5px;margin-top:2px;line-height:1.5;color:var(--txt)}
+.pr-bot b{color:var(--gold2)}
+/* colors */
+.green{color:var(--green)} .red{color:var(--red)}
+.gold{color:var(--gold)}   .orange{color:var(--orange)} .dim{color:var(--dim)}
+.warn{color:var(--orange)!important} .danger{color:var(--red)!important}
+.dd-row{margin-top:-3px}
+.pl-range-row{margin-top:-3px}
+.pl-range-row span:last-child{font-size:10px}
+.empty{color:var(--dim);text-align:center;padding:40px 20px;grid-column:1/-1;font-size:13px}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-logo">📊</div>
+  <div>
+    <div class="hdr-title">MT5 MONITOR <small>v4.0</small></div>
+    <div class="hdr-sub">รวมข้อมูล MT5 ทุก terminal · อัปเดตอัตโนมัติ</div>
+  </div>
+  <div class="hdr-conn">
+    <span class="dot off" id="dot"></span>
+    <span id="connTxt">กำลังเชื่อม…</span>
+  </div>
+</div>
+<div class="ministrip" id="ministrip">
+  <div class="ms-item"><span class="mk">EQ</span><span class="mv" id="msEq">—</span></div>
+  <div class="ms-item"><span class="mk">P/L</span><span class="mv" id="msPl">—</span></div>
+  <div class="ms-item"><span class="mk">วันนี้</span><span class="mv" id="msDay">—</span></div>
+  <div class="ms-item"><span class="mk">ไม้</span><span class="mv" id="msPos">—</span></div>
+  <div class="ms-item"><span class="mk">ทอง</span><span class="mv" id="msGold">—</span></div>
+</div>
+<div class="meta" id="meta">—</div>
+
+<!-- GOLD PRICE -->
+<div class="gold-bar" id="goldBar">
+  <div class="gold-ic">🪙</div>
+  <div class="gold-main">
+    <div class="gold-k">XAUUSD · ราคาทองเรียลไทม์</div>
+    <div class="gold-v" id="goldPrice">—</div>
+    <div class="gold-chg" id="goldChg">กำลังโหลด…</div>
+  </div>
+  <div class="gold-meta" id="goldMeta"></div>
+</div>
+
+<!-- SESSION: เซสชั่นตลาดตอนนี้ (ทองเหวี่ยงแรงช่วง London-NY overlap) -->
+<div class="sess-bar" id="sessBar">
+  <div class="sess-now">
+    <span class="sess-dot" id="sessDot"></span>
+    <span id="sessName">—</span>
+  </div>
+  <div class="spread-chip" id="spreadChip" style="display:none"></div>
+  <div class="sess-next" id="sessNext"></div>
+</div>
+
+<!-- GAUGES: แรงซื้อ/ขาย หลายช่วงเวลา -->
+<div class="gauges" id="gaugesSec">
+  <div class="gauges-hdr" onclick="toggleSec('gaugesSec')">📊 แนวโน้ม XAUUSD ตามช่วงเวลา (แรงซื้อ/ขาย) <span class="caret">▾</span></div>
+  <div class="collapse-body">
+  <div class="gauge-grid" id="gaugeGrid">
+    <div class="gauge"><div class="tf">1 ชม.</div><div class="gauge-dial" id="dial-1H"></div><div class="lbl" id="lbl-1H">—</div><div class="cnt" id="cnt-1H"></div></div>
+    <div class="gauge"><div class="tf">30 นาที</div><div class="gauge-dial" id="dial-30m"></div><div class="lbl" id="lbl-30m">—</div><div class="cnt" id="cnt-30m"></div></div>
+    <div class="gauge"><div class="tf">15 นาที</div><div class="gauge-dial" id="dial-15m"></div><div class="lbl" id="lbl-15m">—</div><div class="cnt" id="cnt-15m"></div></div>
+    <div class="gauge"><div class="tf">5 นาที</div><div class="gauge-dial" id="dial-5m"></div><div class="lbl" id="lbl-5m">—</div><div class="cnt" id="cnt-5m"></div></div>
+  </div>
+  </div>
+</div>
+
+<!-- NEWS: ข่าวกล่องแดงที่กระทบทอง -->
+<div class="news" id="newsSec">
+  <div class="news-hdr" onclick="toggleSec('newsSec')"><span class="redbox"></span> ข่าวกล่องแดงวันนี้ (กระทบทอง) <span class="caret">▾</span></div>
+  <div class="collapse-body"><div id="newsBody"><div class="news-empty">กำลังโหลดข่าว…</div></div></div>
+</div>
+
+<!-- ALERT -->
+<div class="alert" id="alert"><b>⚠ เตือน</b><span id="alertMsg"></span></div>
+
+<!-- KPIs -->
+<div class="kpis" id="kpis">
+  <div class="kpi"><div class="k">บัญชีออนไลน์</div><div class="v" id="kOn">—</div><div class="s" id="kBrk"></div></div>
+  <div class="kpi"><div class="k">Balance รวม</div><div class="v" id="kBal">—</div></div>
+  <div class="kpi"><div class="k">Equity รวม</div><div class="v" id="kEq">—</div></div>
+  <div class="kpi"><div class="k">P/L ลอยตัวรวม</div><div class="v" id="kFl">—</div></div>
+  <div class="kpi"><div class="k">กำไรวันนี้รวม</div><div class="v" id="kDay">—</div></div>
+  <div class="kpi"><div class="k">Eq − Bal รวม</div><div class="v" id="kDiff">—</div><div class="s" id="kDiffPct"></div></div>
+  <div class="kpi"><div class="k">Lot รวม</div><div class="v" id="kLot">—</div><div class="s" id="kLotSub"></div></div>
+  <div class="kpi"><div class="k">ช่วง P/L รวมวันนี้</div><div class="v" id="kRange" style="font-size:14px">—</div><div class="s">สูงสุด / ต่ำสุดที่เคยแตะ</div></div>
+</div>
+
+<!-- CHART -->
+<div class="chart-box" id="chartSec">
+  <div class="chart-top">
+    <span class="chart-lbl" style="cursor:pointer;user-select:none;display:flex;align-items:center;gap:6px" onclick="toggleSec('chartSec')">กราฟ Equity รวม <span class="caret">▾</span></span>
+    <div class="tf-tabs" id="tfTabs">
+      <button class="tf-btn" data-tf="1H">1H</button>
+      <button class="tf-btn" data-tf="4H">4H</button>
+      <button class="tf-btn on" data-tf="1D">1D</button>
+      <button class="tf-btn" data-tf="1W">1W</button>
+      <button class="tf-btn" data-tf="1M">1M</button>
+    </div>
+  </div>
+  <div class="collapse-body">
+    <div class="chart-delta" id="chartDelta">กำลังรอข้อมูลกราฟ…</div>
+    <svg class="spark" id="spark" viewBox="0 0 600 120" preserveAspectRatio="none"></svg>
+  </div>
+</div>
+
+<!-- LIST -->
+<div class="list-hdr">
+  <span class="lbl">บัญชีทั้งหมด</span>
+  <input class="acc-search" id="accSearch" type="text" placeholder="ค้นหาบัญชี…" oninput="onSearch()">
+  <button class="mode-btn" id="modeBtn" onclick="toggleCompact()">☰ ย่อ</button>
+  <div class="sort-btns" id="sortBtns">
+    <button class="sort-btn" data-s="login">Login</button>
+    <button class="sort-btn on" data-s="profit">P/L ลอย</button>
+    <button class="sort-btn" data-s="today">วันนี้</button>
+    <button class="sort-btn" data-s="equity">Equity</button>
+    <button class="sort-btn" data-s="risk">เสี่ยง</button>
+    <button class="sort-btn" data-s="dd">DD วันนี้</button>
+    <button class="sort-btn" data-s="plmin">ขาดทุนสูงสุด</button>
+  </div>
+</div>
+<div class="grid" id="grid"><div class="empty">กำลังโหลดข้อมูล…</div></div>
+
+<script>
+// ===== ค่าคงที่ =====
+var ML_WARN=300, ML_DANGER=150, DD_ALERT=15;
+var DD_WARN=10, DD_DANGER=25;   // DD รายวันต่อบัญชี: >=10% เตือน, >=25% วิกฤต
+var sortBy="profit", tfNow="1D";
+var lastData=[], expanded={};
+
+// ===== ตัวช่วย =====
+function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
+function fmt(n,d){ n=Number(n)||0; d=d==null?2:d; return n.toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d}); }
+function f2(n){ n=Number(n)||0; return (n>=0?"+":"")+fmt(n); }
+function cl(n){ return n>0?"green":(n<0?"red":"dim"); }
+function fago(s){
+  if(s<60) return Math.round(s)+"s";
+  if(s<3600) return Math.round(s/60)+"m";
+  return (s/3600).toFixed(1)+"h";
+}
+function st(age,stale){
+  if(stale||age>600) return{k:"badge-off",t:"หลุด"};
+  if(age>60)         return{k:"badge-lag",t:"ค้าง"};
+  return              {k:"badge-live",t:"สด"};
+}
+function conn(ok){
+  document.getElementById("dot").className="dot "+(ok?"on":"off");
+  document.getElementById("connTxt").textContent=ok?"เชื่อมต่อแล้ว":"ขาดการเชื่อมต่อ";
+}
+
+// ===== ดึงบัญชี =====
+// ===== บัญชีที่ปิดไว้ (ไม่รวมยอดด้านบน) — จำค่าไว้ใน localStorage =====
+var EXCLUDED = {};
+function loadExcluded(){
+  try{ EXCLUDED = JSON.parse(localStorage.getItem("excluded_accounts")||"{}"); }
+  catch(e){ EXCLUDED = {}; }
+}
+function saveExcluded(){
+  try{ localStorage.setItem("excluded_accounts", JSON.stringify(EXCLUDED)); }catch(e){}
+}
+function isIncluded(login){ return !EXCLUDED[String(login)]; }
+function toggleInclude(login){
+  var k=String(login);
+  if(EXCLUDED[k]) delete EXCLUDED[k]; else EXCLUDED[k]=true;
+  saveExcluded();
+  if(lastData.length) renderAll(lastData);
+}
+loadExcluded();
+
+function fetchAccounts(){
+  fetch("/accounts",{cache:"no-store"})
+    .then(function(r){ if(!r.ok)throw new Error("HTTP "+r.status); return r.json(); })
+    .then(function(d){ conn(true); renderAll(d); })
+    .catch(function(e){
+      conn(false);
+      document.getElementById("meta").textContent="✗ เชื่อมไม่ได้: "+(e.message||e);
+    });
+}
+
+// ===== render =====
+function renderAll(data){
+  lastData=data;
+  var i, now=Date.now()/1000;
+  // เติม field ที่คำนวณ
+  for(i=0;i<data.length;i++){
+    var a=data[i];
+    a.eq    = a.equity!=null?a.equity:(a.balance||0);
+    a.fl    = a.profit||0;
+    a.day   = a.profit_today||0;
+    a.ml    = a.margin_level||0;
+    a.fm    = a.margin_free||0;
+    a.lb    = a.lot_buy||0;  a.ls=a.lot_sell||0;
+    a.nb    = a.n_buy||0;    a.ns=a.n_sell||0;
+    a.lots  = a.lb+a.ls;
+    a.diff  = a.eq-(a.balance||0);
+    a.pct   = a.balance>0?a.diff/a.balance*100:0;
+    a.pos   = Array.isArray(a.positions)?a.positions:[];
+    a.stObj = st(a.age||0,a.stale);
+    a.live  = a.stObj.k==="badge-live";
+    a.included = isIncluded(a.login);
+    a.ddPct = a.dd_today_pct||0;
+    a.ddAmt = a.dd_today_amt||0;
+    a.ddPeak = a.dd_peak||a.eq;
+    a.plMax = a.pl_max_today!=null?a.pl_max_today:a.fl;
+    a.plMin = a.pl_min_today!=null?a.pl_min_today:a.fl;
+  }
+
+  // KPI รวม (เฉพาะออนไลน์ + ไม่ถูกปิดไว้)
+  var live=data.filter(function(a){return a.live && a.included;});
+  var offAccounts=data.filter(function(a){return !a.included;});
+  function sum(arr,k){return arr.reduce(function(s,a){return s+(Number(a[k])||0);},0);}
+  var tBal=sum(live,"balance"),tEq=sum(live,"eq"),tFl=sum(live,"fl"),tDay=sum(live,"day");
+  var tLB=sum(live,"lb"),tLS=sum(live,"ls"),tLot=tLB+tLS;
+  var tDiff=tEq-tBal, tDiffPct=tBal>0?tDiff/tBal*100:0;
+  var brokers={};data.forEach(function(a){brokers[a.company||a.server||""]= 1;});
+
+  set("kOn",live.length+" / "+data.length);
+  set("kBrk",Object.keys(brokers).length+" โบรกเกอร์"+(offAccounts.length?(" · ปิด "+offAccounts.length+" บัญชี"):""));
+  set("kBal",fmt(tBal));
+  set("kEq",fmt(tEq));
+  setc("kFl",f2(tFl),cl(tFl));
+  setc("kDay",f2(tDay),cl(tDay));
+  setc("kDiff",f2(tDiff),cl(tDiff));
+  setc("kDiffPct","("+f2(tDiffPct)+"%)",cl(tDiff));
+  set("kLot",fmt(tLot,2));
+  setc("kLotSub","▲"+fmt(tLB,2)+" ▼"+fmt(tLS,2),"dim");
+
+  // ===== สรุปย่อติดจอ =====
+  var nPos=0; live.forEach(function(a){ nPos+=a.pos.length; });
+  setMini("msEq", fmt(tEq), "");
+  setMini("msPl", f2(tFl), cl(tFl));
+  setMini("msDay", f2(tDay), cl(tDay));
+  setMini("msPos", nPos+" ("+fmt(tLot,2)+")", "");
+
+  // เตือน (เฉพาะบัญชีที่รวมอยู่)
+  var considered=data.filter(function(a){return a.included;});
+  var risky=considered.filter(function(a){return a.live&&a.ml>0&&a.ml<ML_DANGER;});
+  var offline=considered.filter(function(a){return !a.live;});
+  var ddPct=tBal>0?Math.max(0,(tBal-tEq)/tBal*100):0;
+  var msgs=[];
+  if(ddPct>=DD_ALERT) msgs.push("ขาดทุนลอยตัวรวม "+ddPct.toFixed(1)+"%");
+  if(risky.length)    msgs.push(risky.length+" บัญชี Margin วิกฤต");
+  if(offline.length)  msgs.push(offline.length+" บัญชีหลุด");
+  var al=document.getElementById("alert");
+  if(msgs.length){al.classList.add("show");document.getElementById("alertMsg").textContent=" "+msgs.join(" · ");}
+  else al.classList.remove("show");
+
+  document.getElementById("meta").textContent=
+    "✓ ได้ข้อมูล "+data.length+" บัญชี"+(offAccounts.length?(" (ปิดไว้ "+offAccounts.length+")"):"")+" · "+new Date().toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+
+  // ===== Spread ทอง (จากบัญชีที่ยังสด) =====
+  updateSpread(data.filter(function(a){return a.live;}));
+
+  // เรียง: บัญชีที่ "รวมยอด" (สวิตช์เปิด) ขึ้นก่อนเสมอ แล้วค่อยเรียงตามเกณฑ์ที่เลือก
+  data.sort(function(a,b){
+    if(a.included !== b.included) return a.included ? -1 : 1;
+    if(sortBy==="login")  return (a.login||0)-(b.login||0);
+    if(sortBy==="today")  return b.day-a.day;
+    if(sortBy==="equity") return b.eq-a.eq;
+    if(sortBy==="risk")   return (b.balance-b.eq)-(a.balance-a.eq);
+    if(sortBy==="dd")     return (b.ddPct||0)-(a.ddPct||0);
+    if(sortBy==="plmin")  return (a.plMin||0)-(b.plMin||0);   // ขาดทุนสูงสุดมากก่อน (ค่าติดลบเยอะสุดขึ้นก่อน)
+    return b.fl-a.fl;
+  });
+
+  // การ์ด
+  var html="";
+  for(i=0;i<data.length;i++){
+    if(SEARCH){
+      var hay=((data[i].label||"")+" "+(data[i].login||"")+" "+(data[i].server||"")+" "+(data[i].company||"")).toLowerCase();
+      if(hay.indexOf(SEARCH)<0) continue;
+    }
+    html+=card(data[i]);
+  }
+  document.getElementById("grid").innerHTML=html||("<div class='empty'>"+(SEARCH?("ไม่พบบัญชีที่ตรงกับ \""+esc(SEARCH)+"\""):"ไม่มีข้อมูลบัญชี")+"</div>");
+}
+
+function card(a){
+  var neg=a.diff<0;
+  var risk=a.live&&a.ml>0&&a.ml<ML_DANGER;
+  var lbl=(a.label&&a.label.length)?esc(a.label):esc(a.login+"");
+  var mlCls=a.ml<=0?"dim":(a.ml<ML_DANGER?"danger":(a.ml<ML_WARN?"warn":"green"));
+  var ml=a.ml>0?fmt(a.ml,0)+"%":"—";
+  var barW=a.balance>0?Math.min(100,Math.abs(a.eq/a.balance)*100):100;
+  var barCol=a.diff>=0?"var(--green)":"var(--red)";
+  var ddCls=a.ddPct>=DD_DANGER?"danger":(a.ddPct>=DD_WARN?"warn":(a.ddPct>0?"dim":"green"));
+  var posOpen=expanded[String(a.login)];
+  // positions HTML
+  var pHtml="";
+  if(a.pos.length===0){ pHtml="<div class='dim' style='font-size:10px;text-align:center;padding:6px'>ไม่มีออเดอร์เปิด</div>"; }
+  else{
+    // สรุปราคาเฉลี่ยแยก BUY/SELL (สำคัญ: รู้ว่าต้องไปถึงไหนถึงเท่าทุน)
+    var sumB=0,volB=0,sumS=0,volS=0;
+    for(var q=0;q<a.pos.length;q++){
+      var pp=a.pos[q], v=Number(pp.volume)||0, op=Number(pp.open)||0;
+      if(pp.side==="BUY"){ sumB+=op*v; volB+=v; } else { sumS+=op*v; volS+=v; }
+    }
+    var avgB=volB>0?sumB/volB:0, avgS=volS>0?sumS/volS:0;
+    var dg=(a.pos[0] && a.pos[0].digits!=null)?a.pos[0].digits:2;
+    if(volB>0||volS>0){
+      pHtml+="<div class='pos-avg'>";
+      if(volB>0) pHtml+="<span class='green'>▲ เฉลี่ย BUY "+fmt(avgB,dg)+"</span>";
+      if(volB>0&&volS>0) pHtml+="<span class='dim'> · </span>";
+      if(volS>0) pHtml+="<span class='red'>▼ เฉลี่ย SELL "+fmt(avgS,dg)+"</span>";
+      pHtml+="</div>";
+    }
+    for(var k=0;k<a.pos.length;k++){
+      var p=a.pos[k];
+      var isBuy=p.side==="BUY";
+      var dig=(p.digits!=null)?p.digits:2;
+      var pt=Number(p.point)||0.01;
+      var op=Number(p.open)||0, cur=Number(p.current)||0;
+      // ระยะห่างเป็นจุด (บวก = กำไร)
+      var dist=0;
+      if(op&&cur&&pt>0) dist=(isBuy?(cur-op):(op-cur))/pt;
+      var distCls=dist>0?"green":(dist<0?"red":"dim");
+      // เวลาถือออเดอร์
+      var held="";
+      if(p.open_time){
+        var secs=Math.max(0,Math.floor(Date.now()/1000)-Number(p.open_time));
+        if(secs<3600) held=Math.floor(secs/60)+"น.";
+        else if(secs<86400) held=Math.floor(secs/3600)+"ชม."+Math.floor((secs%3600)/60)+"น.";
+        else held=Math.floor(secs/86400)+"ว."+Math.floor((secs%86400)/3600)+"ชม.";
+      }
+      pHtml+="<div class='pos-row2'>"
+        +"<div class='pr-top'>"
+          +"<span class='pr-side' style='color:"+(isBuy?"var(--green)":"var(--red)")+"'>"+(isBuy?"▲":"▼")+" "+esc(p.side)+"</span>"
+          +"<span class='pr-sym'>"+esc(p.symbol)+" "+fmt(p.volume,2)+"</span>"
+          +"<span class='pr-pl "+cl(p.profit||0)+"'>"+f2(p.profit||0)+"</span>"
+        +"</div>"
+        +"<div class='pr-bot'>"
+          +"<span class='dim'>เข้า</span> <b>"+fmt(op,dig)+"</b>"
+          +" <span class='dim'>→</span> <b>"+fmt(cur,dig)+"</b>"
+          +" <span class='"+distCls+"'>("+(dist>=0?"+":"")+Math.round(dist)+" จุด)</span>"
+          +(held?(" <span class='dim'>· ถือ "+held+"</span>"):"")
+          +((Number(p.sl)>0)?(" <span class='dim'>· SL "+fmt(p.sl,dig)+"</span>"):"")
+          +((Number(p.tp)>0)?(" <span class='dim'>· TP "+fmt(p.tp,dig)+"</span>"):"")
+        +"</div>"
+      +"</div>";
+    }
+  }
+  return "<div class='card"+(neg?" neg":"")+(risk?" risk":"")+(a.live?"":" stale")+(a.included?"":" excluded")+"' onclick='toggle(\""+a.login+"\")'>"
+    +"<div class='c-strip'></div>"
+    +"<div class='c-body'>"
+      +"<div class='c-top'>"
+        +"<div><div class='c-login'>"+lbl+"</div><div class='c-server'>"+esc(a.company||a.server)+"</div></div>"
+        +"<div style='display:flex;align-items:center;gap:8px'>"
+          +"<div class='mini-switch"+(a.included?" on":"")+"' title='รวม/ไม่รวมยอดด้านบน' onclick='event.stopPropagation();toggleInclude(\""+a.login+"\")'><div class='mk'></div></div>"
+          +"<div style='text-align:right'><div class='c-badge "+a.stObj.k+"'>"+a.stObj.t+"</div><div class='c-ping'>"+fago(a.age||0)+" · "+esc(a.ping||0)+"ms</div></div>"
+        +"</div>"
+      +"</div>"
+      +(a.included?"":"<div class='excl-tag'>⏸ ไม่รวมในยอดด้านบน</div>")
+      +"<div class='c-equity "+(a.eq>=0?"gold":"red")+"'>"+fmt(a.eq)+"</div>"
+      +"<div class='cmp-only cmp-meta'>"+a.pos.length+" ไม้ · "+fmt(a.lots,2)+" lot</div>"
+      +"<div class='c-bal'>Bal "+fmt(a.balance)+" "+esc(a.currency)+" · 1:"+esc(a.leverage)+"</div>"
+      +"<div class='c-bar'><div class='c-bar-fill' style='width:"+barW+"%;background:"+barCol+"'></div></div>"
+      +"<div class='c-diff'><span class='dk'>Eq−Bal</span><span class='"+cl(a.diff)+"' style='font-weight:700'>"+f2(a.diff)+" <span class='dim'>("+f2(a.pct)+"%)</span></span></div>"
+      +"<div class='c-diff dd-row'><span class='dk'>DD วันนี้ (จาก peak "+fmt(a.ddPeak)+")</span><span class='"+ddCls+"' style='font-weight:700'>-"+fmt(a.ddAmt)+" ("+fmt(a.ddPct)+"%)</span></div>"
+      +"<div class='c-diff pl-range-row'><span class='dk'>ช่วง P/L วันนี้</span><span>"
+        +"<span class='green' style='font-weight:700'>สูงสุด "+f2(a.plMax)+"</span>"
+        +" <span class='dim'>/</span> "
+        +"<span class='red' style='font-weight:700'>ต่ำสุด "+f2(a.plMin)+"</span>"
+      +"</span></div>"
+      +"<div class='c-rows'>"
+        +"<div class='c-cell'><div class='ck'>P/L ลอยตัว</div><div class='cv "+cl(a.fl)+"'>"+f2(a.fl)+"</div></div>"
+        +"<div class='c-cell'><div class='ck'>กำไรวันนี้</div><div class='cv "+cl(a.day)+"'>"+f2(a.day)+"</div></div>"
+        +"<div class='c-cell'><div class='ck'>Margin Level</div><div class='cv "+mlCls+"'>"+ml+"</div></div>"
+        +"<div class='c-cell'><div class='ck'>Free Margin</div><div class='cv'>"+fmt(a.fm)+"</div></div>"
+        +"<div class='c-cell'><div class='ck'>ออเดอร์</div><div class='cv'>"+a.pos.length+"</div></div>"
+        +"<div class='c-cell'><div class='ck'>Lot รวม</div><div class='cv'>"+fmt(a.lots,2)+"</div></div>"
+      +"</div>"
+      +"<div class='c-lots'>"
+        +"<div class='c-lot buy'>▲ BUY "+fmt(a.lb,2)+" ("+a.nb+")</div>"
+        +"<div class='c-lot sell'>▼ SELL "+fmt(a.ls,2)+" ("+a.ns+")</div>"
+      +"</div>"
+      +"<div class='cmp-only cmp-pl "+cl(a.fl)+"'>"+f2(a.fl)+"</div>"
+    +"</div>"
+    +"<div class='c-pos"+(posOpen?" open":"")+"' id='p-"+a.login+"'>"+pHtml+"</div>"
+  +"</div>";
+}
+
+function toggle(login){
+  expanded[String(login)]=!expanded[String(login)];
+  if(lastData.length) renderAll(lastData);
+}
+function set(id,v){var el=document.getElementById(id);if(el)el.textContent=v;}
+function setc(id,v,c){var el=document.getElementById(id);if(el){el.textContent=v;el.className="v "+(c||"");}}
+function setMini(id,v,c){var el=document.getElementById(id);if(el){el.textContent=v;el.className="mv "+(c||"");}}
+
+// ===== กราฟ =====
+function fetchChart(){
+  fetch("/history?range="+tfNow,{cache:"no-store"})
+    .then(function(r){return r.json();})
+    .then(function(d){drawChart(d.points||[]);})
+    .catch(function(){});
+}
+function drawChart(pts){
+  var svg=document.getElementById("spark");
+  var delta=document.getElementById("chartDelta");
+  if(pts.length<2){
+    svg.innerHTML="";
+    delta.textContent="กำลังเก็บข้อมูล — ข้อมูลจะขึ้นกราฟหลังเริ่มรัน ~1 นาที";
+    return;
+  }
+  var xs=[],ys=[],i;
+  for(i=0;i<pts.length;i++){xs.push(pts[i].t);ys.push(pts[i].equity);}
+  var x0=xs[0],x1=xs[xs.length-1],y0=Math.min.apply(null,ys),y1=Math.max.apply(null,ys);
+  var W=600,H=120,pad=4;
+  function sx(t){return x1===x0?W:pad+(t-x0)/(x1-x0)*(W-2*pad);}
+  function sy(v){return y1===y0?H/2:H-pad-(v-y0)/(y1-y0)*(H-2*pad);}
+  var path="M"+sx(xs[0])+","+sy(ys[0]);
+  for(i=1;i<pts.length;i++) path+=" L"+sx(xs[i])+","+sy(ys[i]);
+  var area=path+" L"+sx(x1)+","+H+" L"+sx(x0)+","+H+" Z";
+  var first=ys[0],last=ys[ys.length-1],chg=last-first;
+  var col=chg>=0?"#00c896":"#ff4757";
+  // เส้น baseline
+  var by=sy(first);
+  svg.innerHTML=""
+    +"<defs>"
+    +"<linearGradient id='gr' x1='0' y1='0' x2='0' y2='1'>"
+    +"<stop offset='0' stop-color='"+col+"' stop-opacity='.4'/>"
+    +"<stop offset='1' stop-color='"+col+"' stop-opacity='0'/>"
+    +"</linearGradient></defs>"
+    +"<line x1='"+pad+"' y1='"+by+"' x2='"+(W-pad)+"' y2='"+by+"' stroke='rgba(255,255,255,.08)' stroke-dasharray='4,4'/>"
+    +"<path d='"+area+"' fill='url(#gr)'/>"
+    +"<path d='"+path+"' fill='none' stroke='"+col+"' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/>";
+  var d0=new Date(x0*1000),d1=new Date(x1*1000);
+  delta.innerHTML="เปลี่ยนแปลง: <b class='"+(chg>=0?"green":"red")+"'>"+f2(chg)+"</b>"
+    +" · "+fmt(first)+" → "+fmt(last)
+    +" · "+d0.toLocaleString("th-TH",{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"})
+    +" ถึง "+d1.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"});
+}
+
+// ===== Events =====
+document.getElementById("tfTabs").onclick=function(e){
+  var t=e.target; if(!t.dataset.tf) return;
+  tfNow=t.dataset.tf;
+  var bs=this.querySelectorAll(".tf-btn");
+  for(var i=0;i<bs.length;i++) bs[i].className="tf-btn"+(bs[i]===t?" on":"");
+  fetchChart();
+};
+document.getElementById("sortBtns").onclick=function(e){
+  var t=e.target; if(!t.dataset.s) return;
+  sortBy=t.dataset.s;
+  var bs=this.querySelectorAll(".sort-btn");
+  for(var i=0;i<bs.length;i++) bs[i].className="sort-btn"+(bs[i]===t?" on":"");
+  if(lastData.length) renderAll(lastData);
+};
+
+// ===== v3.2 Extras server (ราคาทองรายวันจริง + มาตรวัด + ข่าว) =====
+// ค่าว่าง = โฮสต์เดียวกันแต่พอร์ต 8020 ผ่าน tunnel ของ extras
+// ถ้าใช้ tunnel แยก ให้ใส่ URL เต็มของ extras เช่น "https://xxxx.trycloudflare.com"
+var EXTRAS = "";  // เว้นว่างไว้ถ้ารันผ่าน tunnel ของ extras โดยตรง
+
+// ===== ราคาทอง XAUUSD — ดึง % รายวันจริงจาก extras (มี fallback เป็น gold-api ตรง) =====
+var goldPrev=null;
+function fetchGold(){
+  fetch(EXTRAS+"/gold",{cache:"no-store"})
+    .then(function(r){ if(!r.ok)throw 0; return r.json(); })
+    .then(function(d){
+      var p=Number(d.price); if(!p) throw 0;
+      var chg=Number(d.change)||0, pct=Number(d.change_pct)||0;
+      document.getElementById("goldPrice").textContent="$"+fmt(p);
+      var ce=document.getElementById("goldChg");
+      var box=document.getElementById("goldBar");
+      // ใช้เวลาจริงที่ server ดึงราคาได้ (ไม่ใช่นาฬิกามือถือ) เพื่อรู้ว่าค้างหรือไม่
+      var ageSec = d.age_sec!=null ? d.age_sec : null;
+      var stale = d.stale || (ageSec!=null && ageSec>90);
+      if(stale){
+        ce.textContent = "⚠ ราคาค้าง — server ดึงราคาไม่สำเร็จ"+(ageSec!=null?(" (ค้างมา "+Math.round(ageSec/60)+" นาที)"):"");
+        ce.className="gold-chg red";
+        if(box) box.style.borderColor="rgba(255,71,87,.5)";
+      } else {
+        ce.textContent=(chg>=0?"▲ ":"▼ ")+f2(chg)+" ("+f2(pct)+"%) วันนี้";
+        ce.className="gold-chg "+(chg>=0?"green":"red");
+        if(box) box.style.borderColor="";
+      }
+      var updTxt = (d.ts) ? new Date(d.ts*1000).toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit",second:"2-digit"})
+                           : new Date().toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+      document.getElementById("goldMeta").innerHTML=
+        "เทียบราคาเปิดวัน $"+fmt(d.day_open)+"<br>"+(stale?"ล่าสุดที่ดึงได้ ":"อัปเดต ")+updTxt
+        +(d.fail_count>0?("<br><span style='color:var(--red)'>ล้มเหลว "+d.fail_count+" ครั้งติด</span>"):"");
+      goldPrev=p;
+      setMini("msGold", fmt(p), chg>=0?"green":"red");
+    })
+    .catch(function(){
+      // fallback: ดึงตรงจาก gold-api (ไม่มี %รายวัน) — ใช้เมื่อ extras/monitor server เองก็เอื้อมไม่ถึง
+      fetch("https://api.gold-api.com/price/XAU",{cache:"no-store"})
+        .then(function(r){return r.json();})
+        .then(function(d){
+          var p=Number(d.price); if(!p)return;
+          document.getElementById("goldPrice").textContent="$"+fmt(p);
+          document.getElementById("goldChg").textContent="(รอ server สำหรับ % รายวัน)";
+          document.getElementById("goldChg").className="gold-chg dim";
+        }).catch(function(){
+          document.getElementById("goldChg").textContent="⚠ เชื่อมราคาทองไม่ได้เลย";
+          document.getElementById("goldChg").className="gold-chg red";
+        });
+    });
+}
+
+// ===== มาตรวัดแรงซื้อ/ขาย 4 ช่วง =====
+function gaugeClass(score){
+  if(score>=2)return"g-strongbuy";if(score===1)return"g-buy";
+  if(score===0)return"g-neutral";if(score===-1)return"g-sell";return"g-strongsell";
+}
+function gaugeColor(score){
+  if(score>=2)return"#00ff9d";if(score===1)return"#00c896";
+  if(score===0)return"#566380";if(score===-1)return"#ff4757";return"#ff2d3d";
+}
+function drawDial(id,score){
+  // score -2..+2 -> เข็ม ซ้าย(ขาย) .. ขวา(ซื้อ)
+  var el=document.getElementById(id); if(!el)return;
+  var s=Math.max(-2,Math.min(2,score||0));
+  // มุมเข็ม: -90 (ซ้ายสุด=ขายรุนแรง) .. +90 (ขวาสุด=ซื้อรุนแรง)
+  var ang=(s/2)*82;
+  var col=gaugeColor(s);
+  // เรขาคณิต: ศูนย์กลางครึ่งวงกลม cx,cy ; รัศมีอาร์ค R ; เข็มสั้นกว่าอาร์ค
+  var cx=60,cy=58,R=46,needle=36;
+  function pt(a,r){ var rr=(a-90)*Math.PI/180; return [cx+r*Math.cos(rr), cy+r*Math.sin(rr)]; }
+  var L=pt(-90,R), Rt=pt(90,R), Top=pt(0,R);      // ปลายอาร์คซ้าย/ขวา/บน
+  var nx=pt(ang,needle);
+  el.innerHTML=
+    "<svg viewBox='0 0 120 74'>"
+    // อาร์คพื้นหลัง
+    +"<path d='M"+L[0].toFixed(1)+","+L[1].toFixed(1)+" A"+R+","+R+" 0 0 1 "+Rt[0].toFixed(1)+","+Rt[1].toFixed(1)+"' fill='none' stroke='#222d42' stroke-width='8' stroke-linecap='round'/>"
+    // ครึ่งซ้าย = แดง (ขาย)
+    +"<path d='M"+L[0].toFixed(1)+","+L[1].toFixed(1)+" A"+R+","+R+" 0 0 1 "+Top[0].toFixed(1)+","+Top[1].toFixed(1)+"' fill='none' stroke='#ff4757' stroke-width='8' stroke-linecap='round' opacity='.55'/>"
+    // ครึ่งขวา = เขียว (ซื้อ)
+    +"<path d='M"+Top[0].toFixed(1)+","+Top[1].toFixed(1)+" A"+R+","+R+" 0 0 1 "+Rt[0].toFixed(1)+","+Rt[1].toFixed(1)+"' fill='none' stroke='#00c896' stroke-width='8' stroke-linecap='round' opacity='.55'/>"
+    // เข็ม (สั้นกว่าอาร์ค ไม่ทะลุ)
+    +"<line x1='"+cx+"' y1='"+cy+"' x2='"+nx[0].toFixed(1)+"' y2='"+nx[1].toFixed(1)+"' stroke='"+col+"' stroke-width='3.5' stroke-linecap='round'/>"
+    // จุดหมุน
+    +"<circle cx='"+cx+"' cy='"+cy+"' r='5' fill='"+col+"'/>"
+    +"<circle cx='"+cx+"' cy='"+cy+"' r='2' fill='#0f1420'/>"
+    +"</svg>";
+}
+function fetchGauges(){
+  fetch(EXTRAS+"/gauges",{cache:"no-store"})
+    .then(function(r){return r.json();})
+    .then(function(g){
+      ["1H","30m","15m","5m"].forEach(function(tf){
+        var x=g[tf]; if(!x)return;
+        drawDial("dial-"+tf,x.score||0);
+        var lbl=document.getElementById("lbl-"+tf);
+        lbl.textContent=x.ready?x.label:"รอข้อมูล";
+        lbl.className="lbl "+gaugeClass(x.score||0);
+        document.getElementById("cnt-"+tf).textContent=
+          x.ready?("ซื้อ "+x.buy+" · กลาง "+x.neutral+" · ขาย "+x.sell):"";
+      });
+    })
+    .catch(function(){});
+}
+
+// ===== ข่าวกล่องแดง =====
+function fetchNews(){
+  fetch(EXTRAS+"/news",{cache:"no-store"})
+    .then(function(r){return r.json();})
+    .then(function(n){
+      var box=document.getElementById("newsBody");
+      var items=n.items||[];
+      if(!items.length){
+        box.innerHTML="<div class='news-empty'>"+(n.note||"ไม่มีข่าวกล่องแดงที่กระทบทองวันนี้")+"</div>";
+        return;
+      }
+      var now=new Date(), html="";
+      items.forEach(function(ev){
+        var dt=parseNewsTime(ev.time);
+        var timeStr="—", soon=false, cd="";
+        if(dt){
+          timeStr=dt.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"});
+          var diff=(dt-now)/60000; // นาที
+          if(diff>0&&diff<=60){ soon=true; cd="อีก "+Math.round(diff)+" น."; }
+          else if(diff>0){ cd="อีก "+Math.round(diff/60)+" ชม."; }
+          else { cd="ผ่านแล้ว"; }
+        }
+        html+="<div class='news-row'>"
+          +"<div class='news-time "+(soon?"news-soon":"")+"'>"+timeStr+"<small>"+cd+"</small></div>"
+          +"<span class='news-ccy'>"+esc(ev.currency)+"</span>"
+          +"<div class='news-name'>"+esc(ev.name)
+            +"<div class='news-ff'>คาด "+esc(ev.forecast||"—")+" · ก่อนหน้า "+esc(ev.previous||"—")
+            +(ev.actual?(" · จริง "+esc(ev.actual)):"")+"</div>"
+          +"</div></div>";
+      });
+      box.innerHTML=html;
+    })
+    .catch(function(){
+      document.getElementById("newsBody").innerHTML="<div class='news-empty'>เชื่อม extras server ไม่ได้</div>";
+    });
+}
+function parseNewsTime(s){
+  if(!s)return null;
+  s=String(s);
+  // ลอง ISO ตรงๆ ก่อน (เช่น 2024-01-15T13:30:00.000Z)
+  var d=new Date(s);
+  if(!isNaN(d)) return d;
+  // รูปแบบ MQL5/FF "2024.02.08 15:30:00" -> แปลงเฉพาะส่วนวันที่
+  var m=s.match(/^(\d{4})[.\-](\d{2})[.\-](\d{2})[ T](\d{2}):(\d{2})/);
+  if(m){ return new Date(+m[1], +m[2]-1, +m[3], +m[4], +m[5]); }
+  return null;
+}
+
+// ===== v4.0: โหมดย่อ + ค้นหาบัญชี =====
+var COMPACT=false, SEARCH="";
+function toggleCompact(){
+  COMPACT=!COMPACT;
+  var g=document.getElementById("grid"), b=document.getElementById("modeBtn");
+  if(g) g.className="grid"+(COMPACT?" compact":"");
+  if(b){ b.className="mode-btn"+(COMPACT?" on":""); b.textContent=COMPACT?"▦ เต็ม":"☰ ย่อ"; }
+  try{ localStorage.setItem("compact_mode", COMPACT?"1":"0"); }catch(e){}
+}
+function onSearch(){
+  var el=document.getElementById("accSearch");
+  SEARCH=(el&&el.value||"").trim().toLowerCase();
+  if(lastData.length) renderAll(lastData);
+}
+function restoreCompact(){
+  try{ if(localStorage.getItem("compact_mode")==="1") toggleCompact(); }catch(e){}
+}
+
+// ===== ซ่อน/เปิด ส่วนต่างๆ =====
+function toggleSec(id){
+  var el=document.getElementById(id); if(!el)return;
+  el.classList.toggle("collapsed");
+  try{ localStorage.setItem("collapse_"+id, el.classList.contains("collapsed")?"1":"0"); }catch(e){}
+}
+function restoreSec(){
+  ["gaugesSec","newsSec","chartSec"].forEach(function(id){
+    try{ if(localStorage.getItem("collapse_"+id)==="1"){ var el=document.getElementById(id); if(el)el.classList.add("collapsed"); } }catch(e){}
+  });
+}
+restoreSec();
+restoreCompact();
+
+// ===== Spread ทอง — ใช้ค่ากลาง (median) จากทุกบัญชีที่สด เพื่อกันค่าเพี้ยนจากบัญชีเดียว =====
+var SPREAD_WARN=35, SPREAD_BAD=60;   // หน่วย: จุด (points) ปรับได้ตามโบรก
+function updateSpread(live){
+  var chip=document.getElementById("spreadChip"); if(!chip)return;
+  var vals=[];
+  live.forEach(function(a){
+    var s=Number(a.gold_spread);
+    if(!isNaN(s)&&s>0) vals.push(s);
+  });
+  if(!vals.length){ chip.style.display="none"; return; }
+  vals.sort(function(x,y){return x-y;});
+  var med=vals[Math.floor(vals.length/2)];
+  var cls=med>=SPREAD_BAD?"bad":(med>=SPREAD_WARN?"warn":"ok");
+  var note=med>=SPREAD_BAD?" กว้างผิดปกติ!":(med>=SPREAD_WARN?" เริ่มกว้าง":"");
+  chip.className="spread-chip "+cls;
+  chip.textContent="Spread "+med.toFixed(0)+" จุด"+note;
+  chip.style.display="";
+}
+
+// ===== ช่วง P/L รวมทั้งพอร์ตวันนี้ =====
+function fetchPortfolio(){
+  fetch(EXTRAS+"/portfolio",{cache:"no-store"})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var el=document.getElementById("kRange"); if(!el)return;
+      el.innerHTML="<span class='green'>"+f2(d.max_profit)+"</span>"
+                  +" <span class='dim'>/</span> "
+                  +"<span class='red'>"+f2(d.min_profit)+"</span>";
+    })
+    .catch(function(){});
+}
+
+// ===== เซสชั่นตลาด (คำนวณด้วย UTC ป้องกันเพี้ยนข้ามโซนเวลา) =====
+// เวลามาตรฐาน (UTC): ซิดนีย์ 21-06, โตเกียว 00-09, ลอนดอน 07-16, นิวยอร์ก 12-21
+function updateSession(){
+  var now=new Date();
+  var h=now.getUTCHours()+now.getUTCMinutes()/60;
+  function inRange(s,e){ return s<e ? (h>=s&&h<e) : (h>=s||h<e); }
+  var london=inRange(7,16), ny=inRange(12,21), tokyo=inRange(0,9), sydney=inRange(21,6);
+
+  var name, cls, note;
+  if(london&&ny){
+    name="🔥 London + New York (overlap)"; cls="hot";
+    note="ช่วงทองเหวี่ยงแรงที่สุดของวัน";
+  } else if(ny){
+    name="🇺🇸 New York"; cls="open"; note="สภาพคล่องสูง";
+  } else if(london){
+    name="🇬🇧 London"; cls="open"; note="สภาพคล่องสูง";
+  } else if(tokyo){
+    name="🇯🇵 Tokyo"; cls="quiet"; note="ตลาดเอเชีย เคลื่อนไหวปานกลาง";
+  } else if(sydney){
+    name="🇦🇺 Sydney"; cls="quiet"; note="ตลาดบาง ระวัง spread กว้าง";
+  } else {
+    name="😴 ช่วงเงียบ"; cls="quiet"; note="สภาพคล่องต่ำ";
+  }
+
+  // หาเซสชั่นถัดไป
+  var events=[[7,"London เปิด"],[12,"New York เปิด"],[16,"London ปิด"],[21,"New York ปิด"],[0,"Tokyo เปิด"]];
+  var best=null;
+  events.forEach(function(ev){
+    var diff=ev[0]-h; if(diff<=0) diff+=24;
+    if(!best||diff<best[0]) best=[diff,ev[1]];
+  });
+  var hrs=Math.floor(best[0]), mins=Math.round((best[0]-hrs)*60);
+
+  document.getElementById("sessDot").className="sess-dot "+cls;
+  document.getElementById("sessName").textContent=name;
+  document.getElementById("sessNext").innerHTML=note
+    +"<br>"+best[1]+" อีก "+(hrs>0?(hrs+" ชม. "):"")+mins+" น.";
+}
+
+// ===== Start =====
+fetchAccounts(); fetchChart(); fetchGold(); fetchGauges(); fetchNews();
+fetchPortfolio(); updateSession();
+setInterval(fetchAccounts, 3000);
+setInterval(fetchChart, 30000);
+setInterval(fetchGold, 5000);
+setInterval(fetchGauges, 10000);
+setInterval(fetchNews, 60000);
+setInterval(fetchPortfolio, 5000);
+setInterval(updateSession, 30000);
+</script>
+</body>
+</html>
